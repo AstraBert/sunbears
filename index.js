@@ -557,5 +557,6 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
+module.exports.DataFrame = nativeBinding.DataFrame
 module.exports.DataType = nativeBinding.DataType
 module.exports.readCsv = nativeBinding.readCsv

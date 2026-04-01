@@ -128,3 +128,7 @@ Cargo.lock
 !.yarn/sdks
 !.yarn/versions
 /npm
+
+# test files
+testfiles/*.csv
+!testfiles/generated-100.csv

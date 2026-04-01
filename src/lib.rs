@@ -16,6 +16,15 @@ pub enum CsvValue {
 }
 
 #[napi]
+#[derive(Clone)]
+pub enum ColumnData {
+  String(Vec<String>),
+  Integer(Vec<i64>),
+  Float(Vec<f64>),
+  Boolean(Vec<bool>),
+}
+
+#[napi]
 #[derive(PartialEq, Debug, Clone)]
 pub enum DataType {
   String,
@@ -37,235 +46,182 @@ impl fmt::Display for DataType {
 }
 
 #[napi]
-impl CsvValue {
+impl ColumnData {
   #[napi]
-  pub fn new_from(s: String) -> Self {
-    let ures = s.parse::<i64>();
-    if ures.is_ok() {
-      return Self::Integer(ures.unwrap());
-    }
-    let fres = s.parse::<f64>();
-    if fres.is_ok() {
-      return Self::Float(fres.unwrap());
-    }
-    if s.to_lowercase() == "false" {
-      return Self::Boolean(false);
-    }
-    if s.to_lowercase() == "true" {
-      return Self::Boolean(true);
-    }
-
-    Self::String(s)
-  }
-
-  #[napi]
-  pub fn dtype(&self) -> DataType {
+  pub fn to_float_array(&self) -> Option<Vec<f64>> {
     match self {
-      Self::Boolean(_) => DataType::Boolean,
-      Self::Float(_) => DataType::Float,
-      Self::String(_) => DataType::String,
-      Self::Integer(_) => DataType::Integer,
-    }
-  }
-
-  #[napi]
-  pub fn as_float(&self) -> Option<f64> {
-    match self {
-      Self::Float(f) => Some(f.to_owned()),
-      Self::Integer(i) => Some(i.to_owned() as f64),
+      ColumnData::Float(v) => Some(v.to_owned()),
       _ => None,
     }
   }
 
   #[napi]
-  pub fn as_int(&self) -> Option<i64> {
+  pub fn to_string_array(&self) -> Option<Vec<String>> {
     match self {
-      Self::Integer(i) => Some(i.to_owned()),
+      ColumnData::String(v) => Some(v.to_owned()),
       _ => None,
     }
   }
 
   #[napi]
-  pub fn as_bool(&self) -> Option<bool> {
+  pub fn to_int_array(&self) -> Option<Vec<i64>> {
     match self {
-      Self::Boolean(b) => Some(b.to_owned()),
+      ColumnData::Integer(v) => Some(v.to_owned()),
       _ => None,
     }
   }
 
   #[napi]
-  pub fn as_string(&self) -> Option<String> {
+  pub fn to_bool_array(&self) -> Option<Vec<bool>> {
     match self {
-      Self::String(s) => Some(s.to_owned()),
+      ColumnData::Boolean(v) => Some(v.to_owned()),
       _ => None,
     }
   }
 }
 
-#[napi(object)]
+#[napi(js_name = "DataFrame")]
 pub struct DataFrame {
-  pub columns: HashMap<String, Vec<CsvValue>>,
-  pub len: u16,
-  pub dtypes: HashMap<String, DataType>,
+  columns: HashMap<String, ColumnData>,
+  pub len: u32,
 }
 
 #[napi]
 impl DataFrame {
-  fn new(
-    columns: HashMap<String, Vec<CsvValue>>,
-    len: u16,
-    dtypes: HashMap<String, DataType>,
-  ) -> Self {
-    return Self {
-      columns,
-      len,
-      dtypes,
-    };
+  #[napi(constructor)]
+  pub fn new(columns: HashMap<String, ColumnData>, len: u32) -> Self {
+    return Self { columns, len };
   }
 
   #[napi]
   pub fn col_dtype(&self, col: String) -> Option<DataType> {
-    if let Some(d) = self.dtypes.get(&col) {
-      return Some(d.clone());
+    if let Some(d) = self.columns.get(&col) {
+      match d {
+        ColumnData::Boolean(_) => return Some(DataType::Boolean),
+        ColumnData::Float(_) => return Some(DataType::Float),
+        ColumnData::Integer(_) => return Some(DataType::Integer),
+        ColumnData::String(_) => return Some(DataType::String),
+      }
     }
     None
   }
 
   #[napi]
-  pub fn get_as_string_array(&self, col: String) -> Result<Vec<String>> {
-    if let Some(d) = self.dtypes.get(&col) {
-      if d.to_owned() == DataType::String {
-        let v: Vec<String> = self
-          .columns
-          .get(&col)
-          .unwrap()
-          .iter()
-          .map(|val| val.as_string().unwrap())
-          .collect();
-        return Ok(v);
-      }
-      return Err(anyhow!("Column {} has type {}, not string", col, d));
+  pub fn get(&self, col: String) -> Option<ColumnData> {
+    if let Some(opt) = self.columns.get(&col) {
+      return Some(opt.clone());
     }
-
-    Err(anyhow!("Could not find column {}", col))
+    None
   }
 
-  #[napi]
-  pub fn get_as_float_array(&self, col: String) -> Result<Vec<f64>> {
-    if let Some(d) = self.dtypes.get(&col) {
-      if d.to_owned() == DataType::String {
-        let v: Vec<f64> = self
-          .columns
-          .get(&col)
-          .unwrap()
-          .iter()
-          .map(|val| val.as_float().unwrap())
-          .collect();
-        return Ok(v);
-      }
-      return Err(anyhow!("Column {} has type {}, not float", col, d));
-    }
+  #[napi(getter)]
+  pub fn columns(&self) -> HashMap<String, ColumnData> {
+    self.columns.clone()
+  }
+}
 
-    Err(anyhow!("Could not find column {}", col))
+fn infer_dtype(s: &str) -> DataType {
+  if s.eq_ignore_ascii_case("true") || s.eq_ignore_ascii_case("false") {
+    return DataType::Boolean;
+  }
+  let ires = s.parse::<i64>();
+  if ires.is_ok() {
+    return DataType::Integer;
+  }
+  let fres = s.parse::<f64>();
+  if fres.is_ok() {
+    return DataType::Float;
   }
 
-  #[napi]
-  pub fn get_as_int_array(&self, col: String) -> Result<Vec<i64>> {
-    if let Some(d) = self.dtypes.get(&col) {
-      if d.to_owned() == DataType::String {
-        let v: Vec<i64> = self
-          .columns
-          .get(&col)
-          .unwrap()
-          .iter()
-          .map(|val| val.as_int().unwrap())
-          .collect();
-        return Ok(v);
-      }
-      return Err(anyhow!("Column {} has type {}, not integer", col, d));
-    }
+  DataType::String
+}
 
-    Err(anyhow!("Could not find column {}", col))
+fn str_to_bool(s: &str) -> Option<bool> {
+  if s.eq_ignore_ascii_case("true") {
+    return Some(true);
+  } else if s.eq_ignore_ascii_case("false") {
+    return Some(false);
   }
-
-  #[napi]
-  pub fn get_as_bool_array(&self, col: String) -> Result<Vec<bool>> {
-    if let Some(d) = self.dtypes.get(&col) {
-      if d.to_owned() == DataType::String {
-        let v: Vec<bool> = self
-          .columns
-          .get(&col)
-          .unwrap()
-          .iter()
-          .map(|val| val.as_bool().unwrap())
-          .collect();
-        return Ok(v);
-      }
-      return Err(anyhow!("Column {} has type {}, not integer", col, d));
-    }
-
-    Err(anyhow!("Could not find column {}", col))
-  }
+  None
 }
 
 #[napi]
 pub fn read_csv(path: String) -> Result<DataFrame> {
   let mut reader = Reader::from_path(&path)?;
   let header = reader.headers()?.to_owned();
-  let mut i = 0 as u16;
-  let mut columns: HashMap<String, Vec<CsvValue>> = header
-    .iter()
-    .map(|e| {
-      let v: Vec<CsvValue> = Vec::new();
-      (e.to_string(), v)
-    })
-    .collect();
-  let col_idx: HashMap<usize, String> = header
-    .iter()
-    .enumerate()
-    .map(|(i, s)| (i, s.to_string()))
-    .collect();
-  let mut dtypes: HashMap<String, DataType> = HashMap::new();
-  for result in reader.records() {
+  let header_len = header.len();
+  let mut i = 0 as u32;
+  let mut col_to_vec: Vec<Vec<Box<str>>> = (0..header_len).map(|_| Vec::new()).collect();
+  let col_idx: Vec<&str> = header.iter().collect();
+  let mut dtypes: HashMap<usize, DataType> = HashMap::new();
+
+  for record in reader.records() {
     i += 1;
-    let res = result?.to_owned();
-    if res.len() != header.len() {
+    let rec = record?;
+    if rec.len() != header_len {
       return Err(anyhow!(
-        "Line {:?} has {:?} records, expected {:?}",
+        "Expected length {:?} at row {:?}, got {:?}",
+        header_len,
         i,
-        res.len(),
-        header.len()
+        rec.len()
       ));
     }
-    for (i, s) in res.iter().enumerate() {
-      let col = &col_idx[&i];
-      let mut value = CsvValue::new_from(s.to_string());
-      if let Some(d) = dtypes.get(col) {
-        if d == &DataType::Integer && value.dtype() == DataType::Float {
-          dtypes.insert(col.to_owned(), DataType::Float);
-        } else if d != &DataType::String && value.dtype() == DataType::String {
-          dtypes.insert(col.to_owned(), DataType::String);
-        } else if d == &DataType::String && value.dtype() != DataType::String {
-          value = CsvValue::String(s.to_string());
-        } else if d != &value.dtype() && d != &DataType::String && value.dtype() != DataType::String
-        {
-          return Err(anyhow!(
-            "Line {:?} has type {}, expected {} for {}",
-            i,
-            value.dtype(),
-            d,
-            col,
-          ));
-        }
-      } else {
-        dtypes.insert(col.to_owned(), value.dtype());
+    for (i, s) in rec.iter().enumerate() {
+      if !dtypes.contains_key(&i) {
+        let dtype = infer_dtype(s);
+        dtypes.insert(i, dtype);
       }
-      let vec = columns.get_mut(col).unwrap();
-      vec.push(value);
+      col_to_vec[i].push(s.into());
     }
   }
 
-  let df = DataFrame::new(columns, i, dtypes);
+  let mut cols: HashMap<String, ColumnData> = HashMap::new();
+  for (c, d) in &dtypes {
+    let vc = &col_to_vec[*c];
+    let data: ColumnData = match d {
+      DataType::Boolean => {
+        let v = vc
+          .iter()
+          .enumerate()
+          .map(|(i, s)| {
+            str_to_bool(s).expect(&format!("Expecting bool at line {:?} for col {}", i, c))
+          })
+          .collect();
+        ColumnData::Boolean(v)
+      }
+      DataType::Float => {
+        let v = vc
+          .iter()
+          .enumerate()
+          .map(|(i, s)| {
+            s.parse::<f64>()
+              .expect(&format!("Expecting float at line {:?} for col {}", i, c))
+          })
+          .collect();
+
+        ColumnData::Float(v)
+      }
+      DataType::String => {
+        let v = vc.iter().map(|s| s.to_string()).collect();
+        ColumnData::String(v)
+      }
+      DataType::Integer => {
+        let v = vc
+          .iter()
+          .enumerate()
+          .map(|(i, s)| {
+            s.parse::<i64>()
+              .expect(&format!("Expecting integer at line {:?} for col {}", i, c))
+          })
+          .collect();
+
+        ColumnData::Integer(v)
+      }
+    };
+    cols.insert(col_idx[*c].to_owned(), data);
+  }
+
+  let df = DataFrame::new(cols, i);
 
   Ok(df)
 }
