@@ -8,14 +8,6 @@ use csv::Reader;
 use napi_derive::napi;
 
 #[napi]
-pub enum CsvValue {
-  String(String),
-  Integer(i64),
-  Float(f64),
-  Boolean(bool),
-}
-
-#[napi]
 #[derive(Clone)]
 pub enum ColumnData {
   String(Vec<String>),
@@ -46,37 +38,34 @@ impl fmt::Display for DataType {
 }
 
 #[napi]
-impl ColumnData {
-  #[napi]
-  pub fn to_float_array(&self) -> Option<Vec<f64>> {
-    match self {
-      ColumnData::Float(v) => Some(v.to_owned()),
-      _ => None,
-    }
+pub fn as_float_array(column: ColumnData) -> Option<Vec<f64>> {
+  match column {
+    ColumnData::Float(f) => Some(f),
+    _ => None,
   }
+}
 
-  #[napi]
-  pub fn to_string_array(&self) -> Option<Vec<String>> {
-    match self {
-      ColumnData::String(v) => Some(v.to_owned()),
-      _ => None,
-    }
+#[napi]
+pub fn as_int_array(column: ColumnData) -> Option<Vec<i64>> {
+  match column {
+    ColumnData::Integer(f) => Some(f),
+    _ => None,
   }
+}
 
-  #[napi]
-  pub fn to_int_array(&self) -> Option<Vec<i64>> {
-    match self {
-      ColumnData::Integer(v) => Some(v.to_owned()),
-      _ => None,
-    }
+#[napi]
+pub fn as_boolean_array(column: ColumnData) -> Option<Vec<bool>> {
+  match column {
+    ColumnData::Boolean(f) => Some(f),
+    _ => None,
   }
+}
 
-  #[napi]
-  pub fn to_bool_array(&self) -> Option<Vec<bool>> {
-    match self {
-      ColumnData::Boolean(v) => Some(v.to_owned()),
-      _ => None,
-    }
+#[napi]
+pub fn as_string_array(column: ColumnData) -> Option<Vec<String>> {
+  match column {
+    ColumnData::String(f) => Some(f),
+    _ => None,
   }
 }
 
@@ -90,7 +79,7 @@ pub struct DataFrame {
 impl DataFrame {
   #[napi(constructor)]
   pub fn new(columns: HashMap<String, ColumnData>, len: u32) -> Self {
-    return Self { columns, len };
+    Self { columns, len }
   }
 
   #[napi]
@@ -150,7 +139,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
   let mut reader = Reader::from_path(&path)?;
   let header = reader.headers()?.to_owned();
   let header_len = header.len();
-  let mut i = 0 as u32;
+  let mut i = 0_u32;
   let mut col_to_vec: Vec<Vec<Box<str>>> = (0..header_len).map(|_| Vec::new()).collect();
   let col_idx: Vec<&str> = header.iter().collect();
   let mut dtypes: HashMap<usize, DataType> = HashMap::new();
@@ -167,10 +156,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
       ));
     }
     for (i, s) in rec.iter().enumerate() {
-      if !dtypes.contains_key(&i) {
-        let dtype = infer_dtype(s);
-        dtypes.insert(i, dtype);
-      }
+      dtypes.entry(i).or_insert_with(|| infer_dtype(s));
       col_to_vec[i].push(s.into());
     }
   }
@@ -184,7 +170,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
           .iter()
           .enumerate()
           .map(|(i, s)| {
-            str_to_bool(s).expect(&format!("Expecting bool at line {:?} for col {}", i, c))
+            str_to_bool(s).unwrap_or_else(|| panic!("Expecting bool at line {:?} for col {}", i, c))
           })
           .collect();
         ColumnData::Boolean(v)
@@ -195,7 +181,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
           .enumerate()
           .map(|(i, s)| {
             s.parse::<f64>()
-              .expect(&format!("Expecting float at line {:?} for col {}", i, c))
+              .unwrap_or_else(|_| panic!("Expecting float at line {:?} for col {}", i, c))
           })
           .collect();
 
@@ -211,7 +197,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
           .enumerate()
           .map(|(i, s)| {
             s.parse::<i64>()
-              .expect(&format!("Expecting integer at line {:?} for col {}", i, c))
+              .unwrap_or_else(|_| panic!("Expecting integer at line {:?} for col {}", i, c))
           })
           .collect();
 

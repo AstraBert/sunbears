@@ -1,6 +1,6 @@
 import test from 'ava'
 
-import { readCsv, DataType } from '../index'
+import { readCsv, DataType, DataFrame, ColumnData } from '../index'
 
 test('readCsv reads a CSV and returns a DataFrame with correct datatypes', (t) => {
   const csvPath = 'testfiles/generated-100.csv'
@@ -25,4 +25,24 @@ test('readCsv reads a CSV and returns a DataFrame with correct datatypes', (t) =
   t.truthy(df.get('height'))
   t.truthy(df.get('phone_number'))
   t.truthy(df.get('years_of_experience'))
+})
+
+test('DataFrame class methods work correctly', (t) => {
+  const columns: Record<string, ColumnData> = {
+    test: { type: 'String', field0: ['hello', 'world'] },
+    other: { type: 'Boolean', field0: [false, true] },
+    another: { type: 'Integer', field0: [1, 2] },
+    last_one: { type: 'Float', field0: [0.3, 2.6] },
+  }
+  const df = new DataFrame(columns, 2)
+  t.is(df.len, 2)
+  t.deepEqual(df.columns, columns)
+  t.is(df.colDtype('test'), DataType.String)
+  t.is(df.colDtype('other'), DataType.Boolean)
+  t.is(df.colDtype('another'), DataType.Integer)
+  t.is(df.colDtype('last_one'), DataType.Float)
+  t.deepEqual(df.get('test'), columns['test'])
+  t.deepEqual(df.get('other'), columns['other'])
+  t.deepEqual(df.get('another'), columns['another'])
+  t.deepEqual(df.get('last_one'), columns['last_one'])
 })

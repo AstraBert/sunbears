@@ -558,5 +558,9 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.DataFrame = nativeBinding.DataFrame
+module.exports.asBooleanArray = nativeBinding.asBooleanArray
+module.exports.asFloatArray = nativeBinding.asFloatArray
+module.exports.asIntArray = nativeBinding.asIntArray
+module.exports.asStringArray = nativeBinding.asStringArray
 module.exports.DataType = nativeBinding.DataType
 module.exports.readCsv = nativeBinding.readCsv

@@ -8,23 +8,25 @@ export declare class DataFrame {
   get columns(): Record<string, ColumnData>
 }
 
-export type ColumnData =
-  | { type: 'String'; field0: Array<string> }
-  | { type: 'Integer'; field0: Array<number> }
-  | { type: 'Float'; field0: Array<number> }
-  | { type: 'Boolean'; field0: Array<boolean> }
+export declare function asBooleanArray(column: ColumnData): Array<boolean> | null
 
-export type CsvValue =
-  | { type: 'String'; field0: string }
-  | { type: 'Integer'; field0: number }
-  | { type: 'Float'; field0: number }
-  | { type: 'Boolean'; field0: boolean }
+export declare function asFloatArray(column: ColumnData): Array<number> | null
+
+export declare function asIntArray(column: ColumnData): Array<number> | null
+
+export declare function asStringArray(column: ColumnData): Array<string> | null
+
+export type ColumnData =
+  | { type: 'String', field0: Array<string> }
+  | { type: 'Integer', field0: Array<number> }
+  | { type: 'Float', field0: Array<number> }
+  | { type: 'Boolean', field0: Array<boolean> }
 
 export declare const enum DataType {
   String = 0,
   Float = 1,
   Integer = 2,
-  Boolean = 3,
+  Boolean = 3
 }
 
 export declare function readCsv(path: string): DataFrame
