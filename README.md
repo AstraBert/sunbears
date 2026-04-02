@@ -1,83 +1,174 @@
-# `@napi-rs/package-template`
+# `sunbears`
 
-![https://github.com/napi-rs/package-template/actions](https://github.com/napi-rs/package-template/workflows/CI/badge.svg)
+A CSV data loader for TypeScript with an API similar to Polars and Pandas, written in pure Rust.
 
-> Template project for writing node packages with napi-rs.
+## Installation
 
-# Usage
-
-1. Click **Use this template**.
-2. **Clone** your project.
-3. Run `yarn install` to install dependencies.
-4. Run `yarn napi rename -n [@your-scope/package-name] -b [binary-name]` command under the project folder to rename your package.
-
-## Install this test package
+Install the package with your favorite package manager:
 
 ```bash
-yarn add @napi-rs/package-template
+npm install sunbears
 ```
 
-## Ability
+## Usage
 
-### Build
+The main function for `sunbears` is `readCsv`, which loads the data contained in a CSV file as a `DataFrame`, a columnar data format.
 
-After `yarn build/npm run build` command, you can see `package-template.[darwin|win32|linux].node` file in project root. This is the native addon built from [lib.rs](./src/lib.rs).
+```typescript
+import { readCsv } from 'sunbears'
 
-### Test
+const df = readCsv('test.csv')
+```
 
-With [ava](https://github.com/avajs/ava), run `yarn test/npm run test` to testing native addon. You can also switch to another testing framework if you want.
+The `DataFrame` class exposes two methods:
 
-### CI
+- `colDtype`: retrieve the data type of the records contained within a column (integer, float, boolean or string)
+- `get`: get a column
 
-With GitHub Actions, each commit and pull request will be built and tested automatically in [`node@20`, `@node22`] x [`macOS`, `Linux`, `Windows`] matrix. You will never be afraid of the native addon broken in these platforms.
+```typescript
+const dt = df.colDtype('name')
+const colData = df.get('name')
+```
 
-### Release
+Based on the data type of the column, you can use one of the following helper functions to extract the associated array of data (as `string[]`, `boolean[]` or `number[]`):
 
-Release native package is very difficult in old days. Native packages may ask developers who use it to install `build toolchain` like `gcc/llvm`, `node-gyp` or something more.
+```typescript
+import { DataType, asBooleanArray, asFloatArray, asIntArray, asStringArray } from 'sunbears'
 
-With `GitHub actions`, we can easily prebuild a `binary` for major platforms. And with `N-API`, we should never be afraid of **ABI Compatible**.
+let arr
+switch (dt) {
+  case DataType.Float:
+    arr = asFloatArray(colData)
+    break
+  case DataType.Integer:
+    arr = asIntArray(colData)
+    break
+  case DataType.Boolean:
+    arr = asBooleanArray(colData)
+    break
+  default:
+    arr = asStringArray(colData)
+    break
+}
+```
 
-The other problem is how to deliver prebuild `binary` to users. Downloading it in `postinstall` script is a common way that most packages do it right now. The problem with this solution is it introduced many other packages to download binary that has not been used by `runtime codes`. The other problem is some users may not easily download the binary from `GitHub/CDN` if they are behind a private network (But in most cases, they have a private NPM mirror).
+If the helper function is used on the wrong data type, it will return `null`.
 
-In this package, we choose a better way to solve this problem. We release different `npm packages` for different platforms. And add it to `optionalDependencies` before releasing the `Major` package to npm.
+You can then chain these methods and functions to perform `filter` or `map` operations (natively supported by TypeScript arrays):
 
-`NPM` will choose which native package should download from `registry` automatically. You can see [npm](./npm) dir for details. And you can also run `yarn add @napi-rs/package-template` to see how it works.
+```typescript
+const filteredNames = asStringArray(readCsv('test.csv').get('name'))?.filter((n) => n === 'John Doe')
+const mappedNames = asStringArray(readCsv('test.csv').get('name'))?.map((n) => n.toUpperCase())
+```
 
-## Develop requirements
+## Benchmarking
+
+`sunbears` was benchmarked using the `tinybench`-based script you can find [here](./benchmark/bench.ts). The script reports latency statistics related to the `readCsv` function reading increasingly large CSV files (100, 1000, 100.000 and 1.000.000 rows).
+
+The latest benchmark run was:
+
+| Task                     | Latency avg (s)  | Latency med (s)      | Throughput avg (ops/s) | Throughput med (ops/s) | Samples |
+| ------------------------ | ---------------- | -------------------- | ---------------------- | ---------------------- | ------- |
+| Read a 100-lines CSV     | 0.000073 ± 0.20% | 0.000073 ± 0.0000015 | 13814 ± 0.11%          | 13841 ± 285            | 13727   |
+| Read a 1000-lines CSV    | 0.000423 ± 0.47% | 0.000412 ± 0.000010  | 2383 ± 0.31%           | 2427 ± 60              | 2362    |
+| Read a 100000-lines CSV  | 0.041591 ± 2.07% | 0.040895 ± 0.001126  | 24 ± 1.86%             | 24 ± 1                 | 64      |
+| Read a 1000000-lines CSV | 0.424404 ± 0.73% | 0.421294 ± 0.008276  | 2 ± 0.70%              | 2 ± 0                  | 64      |
+
+Here is how the tool compares to the `read_csv` function in Pandas and Polars ([script](./testfiles/comparative_bench.py)):
+
+| Dataset       | Pandas (s) | Polars (s) |
+| ------------- | ---------- | ---------- |
+| 100 lines     | 0.030637   | 0.022748   |
+| 1000 lines    | 0.033386   | 0.017368   |
+| 100000 lines  | 0.453596   | 0.027075   |
+| 1000000 lines | 3.986837   | 0.198708   |
+
+And here it how it compares with `csv-parse` ([script](./benchmark/bench-alt.ts)):
+
+| Task                       | Latency avg (s)      | Latency med (s)           | Throughput avg (ops/s) | Throughput med (ops/s) | Samples |
+| -------------------------- | -------------------- | ------------------------- | ---------------------- | ---------------------- | ------- |
+| Read a 100-lines CSV       | 0.000008986 ± 20.55% | 0.000006667 ± 0.000000584 | 144,555 ± 0.09%        | 149,993 ± 14,373       | 111,279 |
+| Read a 1000-lines CSV      | 0.000008270 ± 5.20%  | 0.000006583 ± 0.000000541 | 145,826 ± 0.09%        | 151,906 ± 12,486       | 121,220 |
+| Read a 100,000-lines CSV   | 0.000012074 ± 58.53% | 0.000006584 ± 0.000000542 | 145,376 ± 0.11%        | 151,883 ± 13,625       | 82,825  |
+| Read a 1,000,000-lines CSV | 0.000008756 ± 6.74%  | 0.000006583 ± 0.000000542 | 146,329 ± 0.09%        | 151,906 ± 13,602       | 114,206 |
+
+## Development
+
+**Requirements:**
 
 - Install the latest `Rust`
 - Install `Node.js@10+` which fully supported `Node-API`
 - Install `yarn@1.x`
 
-## Test in local
+### Test locally
 
-- yarn
-- yarn build
+- yarn (install)
+- yarn build (build package based on `src/lib.rs`)
 - yarn test
 
-And you will see:
+And you will see something along the lines of:
 
 ```bash
-$ ava --verbose
+$ ava
 
-  ✔ sync function from native code
-  ✔ sleep function from native code (201ms)
+  ✔ readCsv reads a CSV and returns a DataFrame with correct datatypes
+  ✔ DataFrame class methods work correctly
+  ✔ Column to array functions work
   ─
 
-  2 tests passed
-✨  Done in 1.12s.
+  3 tests passed
 ```
 
-## Release package
+### Benchmarks
 
-Ensure you have set your **NPM_TOKEN** in the `GitHub` project setting.
+> _To run benchmarks, you will need [`uv`](<[https://](https://docs.astral.sh/uv/)>) installed (for benchmark data generation)_
 
-In `Settings -> Secrets`, add **NPM_TOKEN** into it.
+Run benchmarks with:
+
+```bash
+yarn bench
+yarn bench:comp-py # compare with python libraries
+yarn bench:comp-ts # compare with csv-parse
+```
+
+The commands will generate `testfiles/generated-*.csv` files (with 100, 1000, 100.000 and 1.000.000 rows), and will perform time-based benchmarks for the `readCsv` (sunbears), `read_csv` (Pandas/Polars) and `parse` (csv-parse) functions.
+
+### Linting and Formatting
+
+You can run formatting for TypeScript, TOML and Rust code with one command:
+
+```bash
+yarn format
+```
+
+You can also run specific formatting checks:
+
+```bash
+yarn format:rs
+yarn format:rs-check # checks formatting, without modifying files
+yarn format:prettier
+yarn format:toml
+```
+
+For linting, you need to run both `oxlint` and `clippy`:
+
+```bash
+yarn lint # oxlint
+yarn clippy # clippy
+```
+
+### Release package
+
+> _Only necessary for maintainers_
+
+> ![NOTE]
+>
+> Ensure you have set your **NPM_TOKEN** in the `GitHub` project setting.
 
 When you want to release the package:
 
 ```bash
-npm version [<newversion> | major | minor | patch | premajor | preminor | prepatch | prerelease [--preid=<prerelease-id>] | from-git]
+yarn version [<newversion> | major | minor | patch | premajor | preminor | prepatch | prerelease [--preid=<prerelease-id>] | from-git]
 
 git push
 ```
