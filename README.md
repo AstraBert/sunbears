@@ -7,7 +7,7 @@ A CSV data loader for TypeScript with an API similar to Polars and Pandas, writt
 Install the package with your favorite package manager:
 
 ```bash
-npm install sunbears
+npm install @cle-does-things/sunbears
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ npm install sunbears
 The main function for `sunbears` is `readCsv`, which loads the data contained in a CSV file as a `DataFrame`, a columnar data format.
 
 ```typescript
-import { readCsv } from 'sunbears'
+import { readCsv } from '@cle-does-things/sunbears'
 
 const df = readCsv('test.csv')
 ```
@@ -33,7 +33,7 @@ const colData = df.get('name')
 Based on the data type of the column, you can use one of the following helper functions to extract the associated array of data (as `string[]`, `boolean[]` or `number[]`):
 
 ```typescript
-import { DataType, asBooleanArray, asFloatArray, asIntArray, asStringArray } from 'sunbears'
+import { DataType, asBooleanArray, asFloatArray, asIntArray, asStringArray } from '@cle-does-things/sunbears'
 
 let arr
 switch (dt) {

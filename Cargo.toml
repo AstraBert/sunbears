@@ -1,6 +1,6 @@
 
 [package]
-authors = ["LongYinan <lynweklm@gmail.com>"]
+authors = ["Clelia Astra Bertelli <astraberte9@gmail.com>"]
 edition = "2021"
 name    = "sunbears"
 version = "0.1.0"

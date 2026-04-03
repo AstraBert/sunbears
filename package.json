@@ -1,5 +1,5 @@
 {
-  "name": "sunbears",
+  "name": "@cle-does-things/sunbears",
   "version": "1.0.0",
   "description": "A CSV data loader for TypeScript with an API similar to Polars and Pandas, written in pure Rust",
   "main": "index.js",
@@ -22,12 +22,16 @@
   ],
   "napi": {
     "binaryName": "sunbears",
+    "name": "sunbears",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "aarch64-apple-darwin"
-    ]
+    ],
+    "package": {
+      "name": "@cle-does-things/sunbears"
+    }
   },
   "engines": {
     "node": ">= 6.14.2 < 7 || >= 8.11.2 < 9 || >= 9.11.0 < 10 || >= 10.0.0"
