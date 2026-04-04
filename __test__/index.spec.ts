@@ -9,6 +9,10 @@ import {
   asFloatArray,
   asIntArray,
   asStringArray,
+  toIntColumn,
+  toFloatColumn,
+  toStringColumn,
+  toBoolColumn,
 } from '../index'
 
 test('readCsv reads a CSV and returns a DataFrame with correct datatypes', (t) => {
@@ -79,4 +83,23 @@ test('Column to array functions work', (t) => {
   const lastArray = asFloatArray(columns['last_one'])
   t.truthy(lastArray)
   t.deepEqual(lastArray, columns['last_one'].field0)
+})
+
+test('Column conversion functions work correctly', (t) => {
+  const intArr = [0, 1, 2, 3]
+  const floatArr = [0.1, 1.2, 2.3, 3.4]
+  const stringArr = ['hello', 'world', 'how', 'are']
+  const boolArr = [true, true, false, false]
+  const intCol = toIntColumn(intArr)
+  t.deepEqual(intCol.field0, intArr)
+  t.is(intCol.type, 'Integer')
+  const floatCol = toFloatColumn(floatArr)
+  t.deepEqual(floatCol.field0, floatArr)
+  t.is(floatCol.type, 'Float')
+  const stringCol = toStringColumn(stringArr)
+  t.deepEqual(stringCol.field0, stringArr)
+  t.is(stringCol.type, 'String')
+  const boolCol = toBoolColumn(boolArr)
+  t.deepEqual(boolCol.field0, boolArr)
+  t.is(boolCol.type, 'Boolean')
 })

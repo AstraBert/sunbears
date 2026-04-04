@@ -1,27 +1,12 @@
+/* eslint-disable */
+
 import { Bench } from 'tinybench'
 import { parse } from 'csv-parse'
-import fs from 'node:fs'
+import fs, { unlinkSync, writeFileSync } from 'node:fs'
 import { finished } from 'stream/promises'
+import { stringify } from 'csv-stringify/sync'
 
 const b = new Bench()
-
-// const processFile = async () => {
-//     const records = [];
-//     const parser = fs.createReadStream(`${os.tmpdir()}/input.csv`).pipe(
-//       parse({
-//         // CSV options if any
-//       }),
-//     );
-//     parser.on("readable", function () {
-//       let record;
-//       while ((record = parser.read()) !== null) {
-//         // Work with each record
-//         records.push(record);
-//       }
-//     });
-//     await finished(parser);
-//     return records;
-//   };
 
 b.add('Read a 100-lines CSV', async () => {
   console.log('Started 100 lines bench')
@@ -72,6 +57,143 @@ b.add('Read a 1000000-lines CSV', async () => {
   await finished(parser)
   console.log('Ended 1.000.000 lines bench')
 })
+
+let records_100: any[][] | undefined
+let records_1000: any[][] | undefined
+let records_100000: any[][] | undefined
+let records_1000000: any[][] | undefined
+
+b.add(
+  'Write a 100-lines CSV',
+  async () => {
+    console.log('Started writing 100 lines bench')
+    const output = stringify(records_100!)
+    writeFileSync('testfiles/written-alt-100.csv', output)
+    console.log('Ended writing 100 lines bench')
+  },
+  {
+    beforeAll: () => {
+      const col1 = new Array(100).fill('something')
+      const col2 = new Array(100).fill(1.0)
+      const col3 = new Array(100).fill(3)
+      const col4 = new Array(100).fill(true)
+      const cols = [col1, col2, col3, col4]
+      let i = 0
+      const matrix: any[][] = []
+      while (i < 100) {
+        let row = []
+        for (const col of cols) {
+          row.push(col[i])
+        }
+        matrix.push(row)
+        i++
+      }
+      records_100 = matrix
+    },
+    afterEach: () => {
+      unlinkSync('testfiles/written-alt-100.csv')
+    },
+  },
+)
+
+b.add(
+  'Write a 1000-lines CSV',
+  async () => {
+    console.log('Started writing 1000 lines bench')
+    const output = stringify(records_1000!)
+    writeFileSync('testfiles/written-alt-1000.csv', output)
+    console.log('Ended writing 1000 lines bench')
+  },
+  {
+    beforeAll: () => {
+      const col1 = new Array(1000).fill('something')
+      const col2 = new Array(1000).fill(1.0)
+      const col3 = new Array(1000).fill(3)
+      const col4 = new Array(1000).fill(true)
+      const cols = [col1, col2, col3, col4]
+      let i = 0
+      const matrix: any[][] = []
+      while (i < 1000) {
+        const row = []
+        for (const col of cols) {
+          row.push(col[i])
+        }
+        matrix.push(row)
+        i++
+      }
+      records_1000 = matrix
+    },
+    afterEach: () => {
+      unlinkSync('testfiles/written-alt-1000.csv')
+    },
+  },
+)
+
+b.add(
+  'Write a 100.000-lines CSV',
+  async () => {
+    console.log('Started writing 100.000 lines bench')
+    const output = stringify(records_100000!)
+    writeFileSync('testfiles/written-alt-100000.csv', output)
+    console.log('Ended writing 100.000 lines bench')
+  },
+  {
+    beforeAll: () => {
+      const col1 = new Array(100000).fill('something')
+      const col2 = new Array(100000).fill(1.0)
+      const col3 = new Array(100000).fill(3)
+      const col4 = new Array(100000).fill(true)
+      const cols = [col1, col2, col3, col4]
+      let i = 0
+      const matrix: any[][] = []
+      while (i < 100000) {
+        const row = []
+        for (const col of cols) {
+          row.push(col[i])
+        }
+        matrix.push(row)
+        i++
+      }
+      records_100000 = matrix
+    },
+    afterEach: () => {
+      unlinkSync('testfiles/written-alt-100000.csv')
+    },
+  },
+)
+
+b.add(
+  'Write a 1.000.000-lines CSV',
+  async () => {
+    console.log('Started writing 1.000.000 lines bench')
+    const output = stringify(records_1000000!)
+    writeFileSync('testfiles/written-alt-1000000.csv', output)
+    console.log('Ended writing 1.000.000 lines bench')
+  },
+  {
+    beforeAll: () => {
+      const col1 = new Array(1000000).fill('something')
+      const col2 = new Array(1000000).fill(1.0)
+      const col3 = new Array(1000000).fill(3)
+      const col4 = new Array(1000000).fill(true)
+      const cols = [col1, col2, col3, col4]
+      let i = 0
+      const matrix: any[][] = []
+      while (i < 1000000) {
+        const row = []
+        for (const col of cols) {
+          row.push(col[i])
+        }
+        matrix.push(row)
+        i++
+      }
+      records_1000000 = matrix
+    },
+    afterEach: () => {
+      unlinkSync('testfiles/written-alt-1000000.csv')
+    },
+  },
+)
 
 await b.run()
 

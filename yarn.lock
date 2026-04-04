@@ -19,6 +19,7 @@ __metadata:
     ava: "npm:^7.0.0"
     chalk: "npm:^5.6.2"
     csv-parse: "npm:^6.2.1"
+    csv-stringify: "npm:^6.7.0"
     husky: "npm:^9.1.7"
     lint-staged: "npm:^16.1.6"
     npm-run-all2: "npm:^8.0.4"
@@ -1837,6 +1838,13 @@ __metadata:
   version: 6.2.1
   resolution: "csv-parse@npm:6.2.1"
   checksum: 10c0/8b6f14b244ca62476d4217aac721131ba0ada3e4ed7614e43ebc99203807564dcb054144d1de4ef22ee8b0c63b431640f75d46a0e1e0f72853a954b279ba1c61
+  languageName: node
+  linkType: hard
+
+"csv-stringify@npm:^6.7.0":
+  version: 6.7.0
+  resolution: "csv-stringify@npm:6.7.0"
+  checksum: 10c0/2f1272e0462c31935650b42f34cb5dafbbc9a3b479074283ec4ed6491756c791d2d6230226c530198d85002d4d3f3b69da14b1f424ab93ad3263124ea25e5ea3
   languageName: node
   linkType: hard
 
