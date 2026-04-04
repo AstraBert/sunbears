@@ -583,3 +583,7 @@ module.exports.asIntArray = nativeBinding.asIntArray
 module.exports.asStringArray = nativeBinding.asStringArray
 module.exports.DataType = nativeBinding.DataType
 module.exports.readCsv = nativeBinding.readCsv
+module.exports.toBoolColumn = nativeBinding.toBoolColumn
+module.exports.toFloatColumn = nativeBinding.toFloatColumn
+module.exports.toIntColumn = nativeBinding.toIntColumn
+module.exports.toStringColumn = nativeBinding.toStringColumn

@@ -22,7 +22,6 @@
   ],
   "napi": {
     "binaryName": "sunbears",
-    "name": "sunbears",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",

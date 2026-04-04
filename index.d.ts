@@ -3,9 +3,11 @@
 export declare class DataFrame {
   len: number
   constructor(columns: Record<string, ColumnData>, len: number)
+  static fromColumns(columns: Record<string, ColumnData>): DataFrame
   colDtype(col: string): DataType | null
   get(col: string): ColumnData | null
   get columns(): Record<string, ColumnData>
+  writeCsv(path: string): void
 }
 
 export declare function asBooleanArray(column: ColumnData): Array<boolean> | null
@@ -30,3 +32,11 @@ export declare const enum DataType {
 }
 
 export declare function readCsv(path: string): DataFrame
+
+export declare function toBoolColumn(data: Array<boolean>): ColumnData
+
+export declare function toFloatColumn(data: Array<number>): ColumnData
+
+export declare function toIntColumn(data: Array<number>): ColumnData
+
+export declare function toStringColumn(data: Array<string>): ColumnData
