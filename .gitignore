@@ -132,3 +132,4 @@ Cargo.lock
 # test files
 testfiles/*.csv
 !testfiles/generated-100.csv
+!testfiles/err-*-col*.csv

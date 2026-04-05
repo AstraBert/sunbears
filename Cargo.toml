@@ -11,10 +11,10 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow      = "1.0.102"
 csv         = "1.4.0"
-napi        = { version = "3.0.0", features = ["anyhow", "serde_json"] }
+itoa        = "1.0.18"
+napi        = { version = "3.0.0", features = ["anyhow"] }
 napi-derive = "3.0.0"
-serde       = "1.0.228"
-serde_json  = "1.0.149"
+ryu         = "1.0.23"
 
 [build-dependencies]
 napi-build = "2"

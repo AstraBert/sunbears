@@ -9,7 +9,12 @@ import {
   asFloatArray,
   asIntArray,
   asStringArray,
+  toIntColumn,
+  toFloatColumn,
+  toStringColumn,
+  toBoolColumn,
 } from '../index'
+import { unlinkSync } from 'fs'
 
 test('readCsv reads a CSV and returns a DataFrame with correct datatypes', (t) => {
   const csvPath = 'testfiles/generated-100.csv'
@@ -36,6 +41,23 @@ test('readCsv reads a CSV and returns a DataFrame with correct datatypes', (t) =
   t.truthy(df.get('years_of_experience'))
 })
 
+test('readCsv throws expected type-dependent errors', (t) => {
+  t.throws(
+    () => {
+      readCsv('testfiles/err-typed-col-1.csv')
+    },
+    undefined,
+    'Expecting integer at line 2 for column colErr',
+  )
+  t.throws(
+    () => {
+      readCsv('testfiles/err-typed-col-2.csv')
+    },
+    undefined,
+    'Expecting integer at line 2 for column colErr',
+  )
+})
+
 test('DataFrame class methods work correctly', (t) => {
   const columns: Record<string, ColumnData> = {
     test: { type: 'String', field0: ['hello', 'world'] },
@@ -56,7 +78,7 @@ test('DataFrame class methods work correctly', (t) => {
   t.deepEqual(df.get('last_one'), columns['last_one'])
 })
 
-test('Column to array functions work', (t) => {
+test('Column to array functions work correctly', (t) => {
   const columns: Record<string, ColumnData> = {
     name: { type: 'String', field0: ['hello', 'world'] },
     other: { type: 'Boolean', field0: [false, true] },
@@ -79,4 +101,91 @@ test('Column to array functions work', (t) => {
   const lastArray = asFloatArray(columns['last_one'])
   t.truthy(lastArray)
   t.deepEqual(lastArray, columns['last_one'].field0)
+})
+
+test('Array to column functions work correctly', (t) => {
+  const intArr = [0, 1, 2, 3]
+  const floatArr = [0.1, 1.2, 2.3, 3.4]
+  const stringArr = ['hello', 'world', 'how', 'are']
+  const boolArr = [true, true, false, false]
+  const intCol = toIntColumn(intArr)
+  t.deepEqual(intCol.field0, intArr)
+  t.is(intCol.type, 'Integer')
+  const floatCol = toFloatColumn(floatArr)
+  t.deepEqual(floatCol.field0, floatArr)
+  t.is(floatCol.type, 'Float')
+  const stringCol = toStringColumn(stringArr)
+  t.deepEqual(stringCol.field0, stringArr)
+  t.is(stringCol.type, 'String')
+  const boolCol = toBoolColumn(boolArr)
+  t.deepEqual(boolCol.field0, boolArr)
+  t.is(boolCol.type, 'Boolean')
+})
+
+test('DataFrame constructor and factory work correctly', (t) => {
+  const columns: Record<string, ColumnData> = {
+    name: { type: 'String', field0: ['hello', 'world'] },
+    other: { type: 'Boolean', field0: [false, true] },
+    another: { type: 'Integer', field0: [1, 2] },
+    last_one: { type: 'Float', field0: [0.3, 2.6] },
+  }
+  const df = new DataFrame(columns, 2)
+  t.is(df.len, 2)
+  for (const k of Object.keys(columns)) {
+    t.deepEqual(df.get(k), columns[k])
+  }
+  const df1 = DataFrame.fromColumns(columns)
+  t.is(df1.len, 2)
+  for (const k of Object.keys(columns)) {
+    t.deepEqual(df1.get(k), columns[k])
+  }
+})
+
+test('DataFrame constructor and factory throw expected errors', (t) => {
+  const columns: Record<string, ColumnData> = {
+    name: { type: 'String', field0: ['hello', 'world'] },
+    other: { type: 'Boolean', field0: [false, true] },
+    another: { type: 'Integer', field0: [1, 2] },
+    last_one: { type: 'Float', field0: [0.3, 2.6] },
+  }
+  const columns1: Record<string, ColumnData> = {
+    name: { type: 'String', field0: ['hello'] },
+    other: { type: 'Boolean', field0: [false, true] },
+    another: { type: 'Integer', field0: [1, 2] },
+    last_one: { type: 'Float', field0: [0.3, 2.6] },
+  }
+  t.throws(
+    () => {
+      new DataFrame(columns, 3)
+    },
+    undefined,
+    'Not all columns are of the declared length',
+  )
+  t.throws(
+    () => {
+      DataFrame.fromColumns(columns1)
+    },
+    undefined,
+    'Not all columns are the same length',
+  )
+})
+
+test('Write to CSV works correctly', (t) => {
+  const col1 = toStringColumn(['hello', 'world'])
+  const col2 = toFloatColumn([1.2, 2.3])
+  const col3 = toIntColumn([4, 5])
+  const col4 = toBoolColumn([true, false])
+  const dfw = DataFrame.fromColumns({
+    col1: col1,
+    col2: col2,
+    col3: col3,
+    col4: col4,
+  })
+  dfw.writeCsv('testfiles/write-test.csv')
+  const dfr = readCsv('testfiles/write-test.csv')
+  const colw = dfw.columns
+  for (const k of Object.keys(colw)) {
+    t.deepEqual(dfr.get(k), colw[k])
+  }
+  unlinkSync('testfiles/write-test.csv')
 })
