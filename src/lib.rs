@@ -117,7 +117,7 @@ impl DataFrame {
   #[napi(constructor)]
   pub fn new(columns: HashMap<String, ColumnData>, len: u32) -> Result<Self> {
     if !columns.iter().all(|(_, c)| c.len() as u32 == len) {
-      return Err(anyhow!("No all columns are the same length"));
+      return Err(anyhow!("Not all columns are of the declared length"));
     }
     Ok(Self { columns, len })
   }
@@ -128,7 +128,7 @@ impl DataFrame {
     let col = &columns[keys[0]];
     let l = col.len();
     if !columns.iter().all(|(_, c)| c.len() == l) {
-      return Err(anyhow!("No all columns are the same length"));
+      return Err(anyhow!("Not all columns are the same length"));
     }
 
     Ok(Self {
@@ -265,24 +265,35 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
     let vc = &col_to_vec[*c];
     let data: ColumnData = match d {
       DataType::Boolean => {
-        let v = vc
-          .iter()
-          .enumerate()
-          .map(|(i, s)| {
-            str_to_bool(s).unwrap_or_else(|| panic!("Expecting bool at line {:?} for col {}", i, c))
-          })
-          .collect();
+        let mut v: Vec<bool> = vec![];
+        for el in vc {
+          match str_to_bool(el) {
+            Some(val) => v.push(val),
+            None => {
+              return Err(anyhow!(
+                "Expecting bool at line {:?} for col {}",
+                i + 1,
+                col_idx[*c]
+              ))
+            }
+          }
+        }
         ColumnData::Boolean(v)
       }
       DataType::Float => {
-        let v = vc
-          .iter()
-          .enumerate()
-          .map(|(i, s)| {
-            s.parse::<f64>()
-              .unwrap_or_else(|_| panic!("Expecting float at line {:?} for col {}", i, c))
-          })
-          .collect();
+        let mut v: Vec<f64> = vec![];
+        for s in vc {
+          match s.parse::<f64>() {
+            Ok(val) => v.push(val),
+            Err(_) => {
+              return Err(anyhow!(
+                "Expecting float at line {:?} for col {}",
+                i + 1,
+                col_idx[*c]
+              ))
+            }
+          }
+        }
 
         ColumnData::Float(v)
       }
@@ -291,14 +302,19 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
         ColumnData::String(v)
       }
       DataType::Integer => {
-        let v = vc
-          .iter()
-          .enumerate()
-          .map(|(i, s)| {
-            s.parse::<i64>()
-              .unwrap_or_else(|_| panic!("Expecting integer at line {:?} for col {}", i, c))
-          })
-          .collect();
+        let mut v: Vec<i64> = vec![];
+        for s in vc {
+          match s.parse::<i64>() {
+            Ok(val) => v.push(val),
+            Err(_) => {
+              return Err(anyhow!(
+                "Expecting integer at line {:?} for col {}",
+                i + 1,
+                col_idx[*c]
+              ))
+            }
+          }
+        }
 
         ColumnData::Integer(v)
       }
