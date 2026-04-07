@@ -26,14 +26,16 @@ The `DataFrame` class exposes two methods:
 
 - `colDtype`: retrieve the data type of the records contained within a column (integer, float, boolean or string)
 - `get`: get a column
-- `writeCsv`: write the dataframe to CSV (see the next paragraph)
+- `writeCsv`: write the dataframe to CSV (see dedicated paragraph)
+- `dropNull`/`fillNull`: Drop or fill null values (see dedicated paragraph)
+- `dropNan` / `fillNan`: Drop or fill NaN values (see dedicated paragraph)
 
 ```typescript
 const dt = df.colDtype('name')
 const colData = df.get('name')
 ```
 
-Based on the data type of the column, you can use one of the following helper functions to extract the associated array of data (as `string[]`, `boolean[]` or `number[]`):
+Based on the data type of the column, you can use one of the following helper functions to extract the associated array of data (as `(string | null)[]`, `(boolean | null)[]` or `(number | null)[]`):
 
 ```typescript
 import { DataType, asBooleanArray, asFloatArray, asIntArray, asStringArray } from '@cle-does-things/sunbears'
@@ -102,6 +104,26 @@ The file will look like this:
 col1,col2,col3,col4
 hello,1.2,4,true
 world,2.3,5,false
+```
+
+### Null and NaN dropping and filling
+
+The DataFrame class supports also methods for filtering out or changing null values in the columns:
+
+```typescript
+const df = readCsv('test.csv')
+df.dropNull() // drop null
+df.fillNull() // fill null values with the zero value of their type
+```
+
+> NOTE: `fillNull` works with zero values, which means: `""` for string, `0` for integer and float, `false` for boolean
+
+You can filter out and change NaN values as well (only applies if there are float-typed columns):
+
+```typescript
+df.dropNan()
+df.fillNan() // fill with zero value
+df.fillNan(99.3) // fill with a specific value
 ```
 
 ## Benchmarking

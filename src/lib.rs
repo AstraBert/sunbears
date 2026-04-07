@@ -168,6 +168,103 @@ impl DataFrame {
     self.columns.clone()
   }
 
+  fn get_dtypes(&self) -> Vec<DataType> {
+    let mut dtypes = Vec::with_capacity(self.columns.len());
+    for k in self.columns().keys() {
+      let dt = self.col_dtype(k.clone()).unwrap();
+      dtypes.push(dt);
+    }
+    dtypes
+  }
+
+  #[napi]
+  pub fn drop_nan(&mut self) {
+    let dtypes = self.get_dtypes();
+    if dtypes.iter().all(|d| d != &DataType::Float) {
+      return;
+    }
+    let mut idxs = HashSet::new();
+    for i in 0..self.len as usize {
+      let mut has_nan = false;
+      for col in self.columns.values() {
+        match col {
+          ColumnData::Float(f) => {
+            if f[i].unwrap_or_default().is_nan() {
+              has_nan = true;
+            }
+          }
+          _ => continue,
+        }
+        if has_nan {
+          break;
+        }
+      }
+      if has_nan {
+        idxs.insert(i);
+      }
+    }
+    if !idxs.is_empty() {
+      for col in self.columns.values_mut() {
+        match col {
+          ColumnData::Boolean(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Float(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Integer(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::String(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+        }
+      }
+      self.len -= idxs.len() as u32;
+    }
+  }
+
+  #[napi]
+  pub fn fill_nan(&mut self, fill_value: Option<f64>) {
+    let dtypes = self.get_dtypes();
+    if dtypes.iter().all(|d| d != &DataType::Float) {
+      return;
+    }
+    let val = fill_value.unwrap_or_default();
+    for col in self.columns.values_mut() {
+      match col {
+        ColumnData::Float(f) => {
+          for item in f.iter_mut().take(self.len as usize) {
+            if item.unwrap_or_default().is_nan() {
+              *item = Some(val);
+            }
+          }
+        }
+        _ => continue,
+      }
+    }
+  }
+
   #[napi]
   pub fn drop_null(&mut self) {
     let mut idxs = HashSet::new();

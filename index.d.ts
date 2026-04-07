@@ -7,6 +7,8 @@ export declare class DataFrame {
   colDtype(col: string): DataType | null
   get(col: string): ColumnData | null
   get columns(): Record<string, ColumnData>
+  dropNan(): void
+  fillNan(fillValue?: number | undefined | null): void
   dropNull(): void
   fillNull(): void
   writeCsv(path: string): void
