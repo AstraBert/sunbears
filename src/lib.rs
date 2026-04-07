@@ -169,11 +169,11 @@ impl DataFrame {
   }
 
   #[napi]
-  pub fn dropna(&mut self) {
+  pub fn drop_null(&mut self) {
     let mut idxs = HashSet::new();
     for i in 0..self.len as usize {
       let mut has_none = false;
-      for (_, col) in &self.columns {
+      for col in self.columns.values() {
         match col {
           ColumnData::Boolean(b) => {
             if b[i].is_none() {
@@ -205,7 +205,7 @@ impl DataFrame {
       }
     }
     if !idxs.is_empty() {
-      for (_, col) in &mut self.columns {
+      for col in self.columns.values_mut() {
         match col {
           ColumnData::Boolean(b) => {
             let mut i = 0;
@@ -241,6 +241,43 @@ impl DataFrame {
           }
         }
       }
+      self.len -= idxs.len() as u32;
+    }
+  }
+
+  #[napi]
+  pub fn fill_null(&mut self) {
+    for col in self.columns.values_mut() {
+      match col {
+        ColumnData::Boolean(b) => {
+          for item in b.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(false);
+            }
+          }
+        }
+        ColumnData::Float(f) => {
+          for item in f.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(0_f64);
+            }
+          }
+        }
+        ColumnData::String(s) => {
+          for item in s.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(String::new());
+            }
+          }
+        }
+        ColumnData::Integer(j) => {
+          for item in j.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(0_i64);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -267,7 +304,7 @@ impl DataFrame {
             row.push(v);
           }
           ColumnData::Float(f) => {
-            let v = float_buf.format(f[i].unwrap_or(f64::NAN)).to_string();
+            let v = float_buf.format(f[i].unwrap_or_default()).to_string();
             row.push(v);
           }
           ColumnData::Integer(j) => {
@@ -346,7 +383,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
     let vc = &col_to_vec[*c];
     let data: ColumnData = match d {
       DataType::Boolean => {
-        let mut v: Vec<Option<bool>> = vec![];
+        let mut v: Vec<Option<bool>> = Vec::with_capacity(vc.len());
         for el in vc {
           if el.is_empty() {
             v.push(None);
@@ -366,7 +403,7 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
         ColumnData::Boolean(v)
       }
       DataType::Float => {
-        let mut v: Vec<Option<f64>> = vec![];
+        let mut v: Vec<Option<f64>> = Vec::with_capacity(vc.len());
         for s in vc {
           if s.is_empty() {
             v.push(None);
@@ -387,11 +424,18 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
         ColumnData::Float(v)
       }
       DataType::String => {
-        let v = vc.iter().map(|s| Some(s.to_string())).collect();
+        let mut v: Vec<Option<String>> = Vec::with_capacity(vc.len());
+        for s in vc {
+          if s.is_empty() {
+            v.push(None);
+            continue;
+          }
+          v.push(Some(s.to_string()));
+        }
         ColumnData::String(v)
       }
       DataType::Integer => {
-        let mut v: Vec<Option<i64>> = vec![];
+        let mut v: Vec<Option<i64>> = Vec::with_capacity(vc.len());
         for s in vc {
           if s.is_empty() {
             v.push(None);

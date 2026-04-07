@@ -7,22 +7,24 @@ export declare class DataFrame {
   colDtype(col: string): DataType | null
   get(col: string): ColumnData | null
   get columns(): Record<string, ColumnData>
+  dropNull(): void
+  fillNull(): void
   writeCsv(path: string): void
 }
 
-export declare function asBooleanArray(column: ColumnData): Array<boolean> | null
+export declare function asBooleanArray(column: ColumnData): Array<boolean | undefined | null> | null
 
-export declare function asFloatArray(column: ColumnData): Array<number> | null
+export declare function asFloatArray(column: ColumnData): Array<number | undefined | null> | null
 
-export declare function asIntArray(column: ColumnData): Array<number> | null
+export declare function asIntArray(column: ColumnData): Array<number | undefined | null> | null
 
-export declare function asStringArray(column: ColumnData): Array<string> | null
+export declare function asStringArray(column: ColumnData): Array<string | undefined | null> | null
 
 export type ColumnData =
-  | { type: 'String'; field0: Array<string> }
-  | { type: 'Integer'; field0: Array<number> }
-  | { type: 'Float'; field0: Array<number> }
-  | { type: 'Boolean'; field0: Array<boolean> }
+  | { type: 'String'; field0: Array<string | undefined | null> }
+  | { type: 'Integer'; field0: Array<number | undefined | null> }
+  | { type: 'Float'; field0: Array<number | undefined | null> }
+  | { type: 'Boolean'; field0: Array<boolean | undefined | null> }
 
 export declare const enum DataType {
   String = 0,
@@ -33,10 +35,10 @@ export declare const enum DataType {
 
 export declare function readCsv(path: string): DataFrame
 
-export declare function toBoolColumn(data: Array<boolean>): ColumnData
+export declare function toBoolColumn(data: Array<boolean | undefined | null>): ColumnData
 
-export declare function toFloatColumn(data: Array<number>): ColumnData
+export declare function toFloatColumn(data: Array<number | undefined | null>): ColumnData
 
-export declare function toIntColumn(data: Array<number>): ColumnData
+export declare function toIntColumn(data: Array<number | undefined | null>): ColumnData
 
-export declare function toStringColumn(data: Array<string>): ColumnData
+export declare function toStringColumn(data: Array<string | undefined | null>): ColumnData
