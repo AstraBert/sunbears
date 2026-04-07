@@ -189,3 +189,106 @@ test('Write to CSV works correctly', (t) => {
   }
   unlinkSync('testfiles/write-test.csv')
 })
+
+test('Dropping null values works correctly', (t) => {
+  const col1 = toStringColumn(['hello', 'world', null, 'bye', 'moon', 'hey'])
+  const col2 = toFloatColumn([1.2, 2.3, 0.3, null, 0.5, 8.9])
+  const col3 = toIntColumn([4, 5, 6, 7, null, 8])
+  const col4 = toBoolColumn([true, false, true, false, true, null])
+  const df = DataFrame.fromColumns({
+    col1: col1,
+    col2: col2,
+    col3: col3,
+    col4: col4,
+  })
+  t.is(df.len, 6)
+  df.dropNull()
+  t.is(df.len, 2)
+  t.deepEqual(asStringArray(df.get('col1')!)!, ['hello', 'world'])
+  t.deepEqual(asFloatArray(df.get('col2')!)!, [1.2, 2.3])
+  t.deepEqual(asIntArray(df.get('col3')!)!, [4, 5])
+  t.deepEqual(asBooleanArray(df.get('col4')!)!, [true, false])
+})
+
+test('Reading null values works correctly', (t) => {
+  const df = readCsv('testfiles/with-nulls.csv')
+  t.is(df.len, 5)
+  const col1 = asStringArray(df.get('col1')!)!
+  t.is(col1.filter((x) => x === null).length, 1)
+  t.deepEqual(col1, ['hello', null, 'bye', 'test', 'ciao'])
+  const col2 = asIntArray(df.get('col2')!)!
+  t.is(col2.filter((x) => x === null).length, 1)
+  t.deepEqual(col2, [1, 2, null, 3, 4])
+  const col3 = asFloatArray(df.get('col3')!)!
+  t.is(col3.filter((x) => x === null).length, 1)
+  t.deepEqual(col3, [0.1, 0.2, 0.3, null, 0.4])
+  const col4 = asBooleanArray(df.get('col4')!)!
+  t.is(col4.filter((x) => x === null).length, 1)
+  t.deepEqual(col4, [true, false, true, false, null])
+})
+
+test('Filling null values works correctly', (t) => {
+  const df = readCsv('testfiles/with-nulls.csv')
+  df.fillNull()
+  t.is(df.len, 5)
+  const col1 = asStringArray(df.get('col1')!)!
+  t.is(col1.filter((x) => x === null).length, 0)
+  t.deepEqual(col1, ['hello', '', 'bye', 'test', 'ciao'])
+  const col2 = asIntArray(df.get('col2')!)!
+  t.is(col2.filter((x) => x === null).length, 0)
+  t.deepEqual(col2, [1, 2, 0, 3, 4])
+  const col3 = asFloatArray(df.get('col3')!)!
+  t.is(col3.filter((x) => x === null).length, 0)
+  t.deepEqual(col3, [0.1, 0.2, 0.3, 0.0, 0.4])
+  const col4 = asBooleanArray(df.get('col4')!)!
+  t.is(col4.filter((x) => x === null).length, 0)
+  t.deepEqual(col4, [true, false, true, false, false])
+})
+
+test('Dropping NaN values works correctly', (t) => {
+  const col1 = toStringColumn(['hello', 'world', null, 'bye', 'moon', 'hey'])
+  const col2 = toFloatColumn([1.2, 2.3, 0.3, NaN, 0.5, 8.9])
+  const col3 = toIntColumn([4, 5, 6, 7, null, 8])
+  const col4 = toBoolColumn([true, false, true, false, true, null])
+  const df = DataFrame.fromColumns({
+    col1: col1,
+    col2: col2,
+    col3: col3,
+    col4: col4,
+  })
+  t.is(df.len, 6)
+  df.dropNan()
+  t.is(df.len, 5)
+  t.deepEqual(asStringArray(df.get('col1')!)!, ['hello', 'world', null, 'moon', 'hey'])
+  t.deepEqual(asFloatArray(df.get('col2')!)!, [1.2, 2.3, 0.3, 0.5, 8.9])
+  t.deepEqual(asIntArray(df.get('col3')!)!, [4, 5, 6, null, 8])
+  t.deepEqual(asBooleanArray(df.get('col4')!)!, [true, false, true, true, null])
+})
+
+test('Filling NaN values with a specific value works correctly', (t) => {
+  const col1 = toFloatColumn([1.0, 2.0, NaN, 3.0, 5.0, null])
+  const col2 = toFloatColumn([1.2, 2.3, 0.3, NaN, 0.5, 8.9])
+  const df = DataFrame.fromColumns({
+    col1: col1,
+    col2: col2,
+  })
+  t.is(df.len, 6)
+  df.fillNan(99.3)
+  t.is(df.len, 6)
+  t.deepEqual(asFloatArray(df.get('col1')!)!, [1.0, 2.0, 99.3, 3.0, 5.0, null])
+  t.deepEqual(asFloatArray(df.get('col2')!)!, [1.2, 2.3, 0.3, 99.3, 0.5, 8.9])
+})
+
+test('Filling NaN values with the zero value works correctly', (t) => {
+  const col1 = toFloatColumn([1.0, 2.0, NaN, 3.0, 5.0, null])
+  const col2 = toFloatColumn([1.2, 2.3, 0.3, NaN, 0.5, 8.9])
+  const df = DataFrame.fromColumns({
+    col1: col1,
+    col2: col2,
+  })
+  t.is(df.len, 6)
+  df.fillNan()
+  t.is(df.len, 6)
+  t.deepEqual(asFloatArray(df.get('col1')!)!, [1.0, 2.0, 0.0, 3.0, 5.0, null])
+  t.deepEqual(asFloatArray(df.get('col2')!)!, [1.2, 2.3, 0.3, 0.0, 0.5, 8.9])
+})

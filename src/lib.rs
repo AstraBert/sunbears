@@ -1,6 +1,11 @@
 #![deny(clippy::all)]
 
-use std::{collections::HashMap, fmt, fs::File, io::BufWriter};
+use std::{
+  collections::{HashMap, HashSet},
+  fmt,
+  fs::File,
+  io::BufWriter,
+};
 
 use anyhow::{anyhow, Result};
 
@@ -12,10 +17,10 @@ use napi_derive::napi;
 #[napi]
 #[derive(Clone)]
 pub enum ColumnData {
-  String(Vec<String>),
-  Integer(Vec<i64>),
-  Float(Vec<f64>),
-  Boolean(Vec<bool>),
+  String(Vec<Option<String>>),
+  Integer(Vec<Option<i64>>),
+  Float(Vec<Option<f64>>),
+  Boolean(Vec<Option<bool>>),
 }
 
 impl ColumnData {
@@ -53,7 +58,7 @@ impl fmt::Display for DataType {
 // ---------------------------------------- HELPER FUNCTIONS FOR DATA MODELS ----------------------------------------
 
 #[napi]
-pub fn as_float_array(column: ColumnData) -> Option<Vec<f64>> {
+pub fn as_float_array(column: ColumnData) -> Option<Vec<Option<f64>>> {
   match column {
     ColumnData::Float(f) => Some(f),
     _ => None,
@@ -61,7 +66,7 @@ pub fn as_float_array(column: ColumnData) -> Option<Vec<f64>> {
 }
 
 #[napi]
-pub fn as_int_array(column: ColumnData) -> Option<Vec<i64>> {
+pub fn as_int_array(column: ColumnData) -> Option<Vec<Option<i64>>> {
   match column {
     ColumnData::Integer(f) => Some(f),
     _ => None,
@@ -69,7 +74,7 @@ pub fn as_int_array(column: ColumnData) -> Option<Vec<i64>> {
 }
 
 #[napi]
-pub fn as_boolean_array(column: ColumnData) -> Option<Vec<bool>> {
+pub fn as_boolean_array(column: ColumnData) -> Option<Vec<Option<bool>>> {
   match column {
     ColumnData::Boolean(f) => Some(f),
     _ => None,
@@ -77,7 +82,7 @@ pub fn as_boolean_array(column: ColumnData) -> Option<Vec<bool>> {
 }
 
 #[napi]
-pub fn as_string_array(column: ColumnData) -> Option<Vec<String>> {
+pub fn as_string_array(column: ColumnData) -> Option<Vec<Option<String>>> {
   match column {
     ColumnData::String(f) => Some(f),
     _ => None,
@@ -85,22 +90,22 @@ pub fn as_string_array(column: ColumnData) -> Option<Vec<String>> {
 }
 
 #[napi]
-pub fn to_string_column(data: Vec<String>) -> ColumnData {
+pub fn to_string_column(data: Vec<Option<String>>) -> ColumnData {
   ColumnData::String(data)
 }
 
 #[napi]
-pub fn to_float_column(data: Vec<f64>) -> ColumnData {
+pub fn to_float_column(data: Vec<Option<f64>>) -> ColumnData {
   ColumnData::Float(data)
 }
 
 #[napi]
-pub fn to_int_column(data: Vec<i64>) -> ColumnData {
+pub fn to_int_column(data: Vec<Option<i64>>) -> ColumnData {
   ColumnData::Integer(data)
 }
 
 #[napi]
-pub fn to_bool_column(data: Vec<bool>) -> ColumnData {
+pub fn to_bool_column(data: Vec<Option<bool>>) -> ColumnData {
   ColumnData::Boolean(data)
 }
 
@@ -163,6 +168,216 @@ impl DataFrame {
     self.columns.clone()
   }
 
+  fn get_dtypes(&self) -> Vec<DataType> {
+    let mut dtypes = Vec::with_capacity(self.columns.len());
+    for k in self.columns().keys() {
+      let dt = self.col_dtype(k.clone()).unwrap();
+      dtypes.push(dt);
+    }
+    dtypes
+  }
+
+  #[napi]
+  pub fn drop_nan(&mut self) {
+    let dtypes = self.get_dtypes();
+    if dtypes.iter().all(|d| d != &DataType::Float) {
+      return;
+    }
+    let mut idxs = HashSet::new();
+    for i in 0..self.len as usize {
+      let mut has_nan = false;
+      for col in self.columns.values() {
+        match col {
+          ColumnData::Float(f) => {
+            if f[i].unwrap_or_default().is_nan() {
+              has_nan = true;
+            }
+          }
+          _ => continue,
+        }
+        if has_nan {
+          break;
+        }
+      }
+      if has_nan {
+        idxs.insert(i);
+      }
+    }
+    if !idxs.is_empty() {
+      for col in self.columns.values_mut() {
+        match col {
+          ColumnData::Boolean(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Float(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Integer(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::String(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+        }
+      }
+      self.len -= idxs.len() as u32;
+    }
+  }
+
+  #[napi]
+  pub fn fill_nan(&mut self, fill_value: Option<f64>) {
+    let dtypes = self.get_dtypes();
+    if dtypes.iter().all(|d| d != &DataType::Float) {
+      return;
+    }
+    let val = fill_value.unwrap_or_default();
+    for col in self.columns.values_mut() {
+      match col {
+        ColumnData::Float(f) => {
+          for item in f.iter_mut().take(self.len as usize) {
+            if item.unwrap_or_default().is_nan() {
+              *item = Some(val);
+            }
+          }
+        }
+        _ => continue,
+      }
+    }
+  }
+
+  #[napi]
+  pub fn drop_null(&mut self) {
+    let mut idxs = HashSet::new();
+    for i in 0..self.len as usize {
+      let mut has_none = false;
+      for col in self.columns.values() {
+        match col {
+          ColumnData::Boolean(b) => {
+            if b[i].is_none() {
+              has_none = true;
+            }
+          }
+          ColumnData::Float(b) => {
+            if b[i].is_none() {
+              has_none = true;
+            }
+          }
+          ColumnData::String(b) => {
+            if b[i].is_none() {
+              has_none = true;
+            }
+          }
+          ColumnData::Integer(b) => {
+            if b[i].is_none() {
+              has_none = true;
+            }
+          }
+        }
+        if has_none {
+          break;
+        }
+      }
+      if has_none {
+        idxs.insert(i);
+      }
+    }
+    if !idxs.is_empty() {
+      for col in self.columns.values_mut() {
+        match col {
+          ColumnData::Boolean(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Float(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::Integer(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+          ColumnData::String(b) => {
+            let mut i = 0;
+            b.retain(|_| {
+              let keep = !idxs.contains(&i);
+              i += 1;
+              keep
+            });
+          }
+        }
+      }
+      self.len -= idxs.len() as u32;
+    }
+  }
+
+  #[napi]
+  pub fn fill_null(&mut self) {
+    for col in self.columns.values_mut() {
+      match col {
+        ColumnData::Boolean(b) => {
+          for item in b.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(false);
+            }
+          }
+        }
+        ColumnData::Float(f) => {
+          for item in f.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(0_f64);
+            }
+          }
+        }
+        ColumnData::String(s) => {
+          for item in s.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(String::new());
+            }
+          }
+        }
+        ColumnData::Integer(j) => {
+          for item in j.iter_mut().take(self.len as usize) {
+            if item.is_none() {
+              *item = Some(0_i64);
+            }
+          }
+        }
+      }
+    }
+  }
+
   #[napi]
   pub fn write_csv(&self, path: String) -> Result<()> {
     let file = File::create(&path)?;
@@ -178,7 +393,7 @@ impl DataFrame {
         let col = &self.columns[*key];
         match col {
           ColumnData::Boolean(b) => {
-            let v = if b[i] {
+            let v = if b[i].unwrap_or_default() {
               "true".to_string()
             } else {
               "false".to_string()
@@ -186,15 +401,15 @@ impl DataFrame {
             row.push(v);
           }
           ColumnData::Float(f) => {
-            let v = float_buf.format(f[i]).to_string();
+            let v = float_buf.format(f[i].unwrap_or_default()).to_string();
             row.push(v);
           }
           ColumnData::Integer(j) => {
-            let v = int_buf.format(j[i]).to_string();
+            let v = int_buf.format(j[i].unwrap_or_default()).to_string();
             row.push(v);
           }
           ColumnData::String(s) => {
-            row.push(s[i].clone());
+            row.push(s[i].clone().unwrap_or_default());
           }
         }
       }
@@ -265,10 +480,14 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
     let vc = &col_to_vec[*c];
     let data: ColumnData = match d {
       DataType::Boolean => {
-        let mut v: Vec<bool> = vec![];
+        let mut v: Vec<Option<bool>> = Vec::with_capacity(vc.len());
         for el in vc {
+          if el.is_empty() {
+            v.push(None);
+            continue;
+          }
           match str_to_bool(el) {
-            Some(val) => v.push(val),
+            Some(val) => v.push(Some(val)),
             None => {
               return Err(anyhow!(
                 "Expecting bool at line {:?} for col {}",
@@ -281,10 +500,14 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
         ColumnData::Boolean(v)
       }
       DataType::Float => {
-        let mut v: Vec<f64> = vec![];
+        let mut v: Vec<Option<f64>> = Vec::with_capacity(vc.len());
         for s in vc {
+          if s.is_empty() {
+            v.push(None);
+            continue;
+          }
           match s.parse::<f64>() {
-            Ok(val) => v.push(val),
+            Ok(val) => v.push(Some(val)),
             Err(_) => {
               return Err(anyhow!(
                 "Expecting float at line {:?} for col {}",
@@ -298,14 +521,25 @@ pub fn read_csv(path: String) -> Result<DataFrame> {
         ColumnData::Float(v)
       }
       DataType::String => {
-        let v = vc.iter().map(|s| s.to_string()).collect();
+        let mut v: Vec<Option<String>> = Vec::with_capacity(vc.len());
+        for s in vc {
+          if s.is_empty() {
+            v.push(None);
+            continue;
+          }
+          v.push(Some(s.to_string()));
+        }
         ColumnData::String(v)
       }
       DataType::Integer => {
-        let mut v: Vec<i64> = vec![];
+        let mut v: Vec<Option<i64>> = Vec::with_capacity(vc.len());
         for s in vc {
+          if s.is_empty() {
+            v.push(None);
+            continue;
+          }
           match s.parse::<i64>() {
-            Ok(val) => v.push(val),
+            Ok(val) => v.push(Some(val)),
             Err(_) => {
               return Err(anyhow!(
                 "Expecting integer at line {:?} for col {}",

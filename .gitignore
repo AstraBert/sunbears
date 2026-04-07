@@ -130,6 +130,5 @@ Cargo.lock
 /npm
 
 # test files
-testfiles/*.csv
+testfiles/generated-*.csv
 !testfiles/generated-100.csv
-!testfiles/err-*-col*.csv

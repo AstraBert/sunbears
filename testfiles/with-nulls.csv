@@ -1,0 +1,6 @@
+col1,col2,col3,col4
+hello,1,0.1,true
+,2,0.2,false
+bye,,0.3,true
+test,3,,false
+ciao,4,0.4,
