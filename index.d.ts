@@ -10,7 +10,12 @@ export declare class DataFrame {
   dropNan(): void
   fillNan(fillValue?: number | undefined | null): void
   dropNull(): void
-  fillNull(): void
+  fillNull(
+    fillString?: string | undefined | null,
+    fillFloat?: number | undefined | null,
+    fillInt?: number | undefined | null,
+    fillBool?: boolean | undefined | null,
+  ): void
   writeCsv(path: string): void
 }
 
