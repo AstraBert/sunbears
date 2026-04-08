@@ -343,34 +343,44 @@ impl DataFrame {
   }
 
   #[napi]
-  pub fn fill_null(&mut self) {
+  pub fn fill_null(
+    &mut self,
+    fill_string: Option<String>,
+    fill_float: Option<f64>,
+    fill_int: Option<i64>,
+    fill_bool: Option<bool>,
+  ) {
+    let str_val = fill_string.unwrap_or_default();
+    let f64_val = fill_float.unwrap_or_default();
+    let i64_val = fill_int.unwrap_or_default();
+    let bool_val = fill_bool.unwrap_or_default();
     for col in self.columns.values_mut() {
       match col {
         ColumnData::Boolean(b) => {
           for item in b.iter_mut().take(self.len as usize) {
             if item.is_none() {
-              *item = Some(false);
+              *item = Some(bool_val);
             }
           }
         }
         ColumnData::Float(f) => {
           for item in f.iter_mut().take(self.len as usize) {
             if item.is_none() {
-              *item = Some(0_f64);
+              *item = Some(f64_val);
             }
           }
         }
         ColumnData::String(s) => {
           for item in s.iter_mut().take(self.len as usize) {
             if item.is_none() {
-              *item = Some(String::new());
+              *item = Some(str_val.to_owned());
             }
           }
         }
         ColumnData::Integer(j) => {
           for item in j.iter_mut().take(self.len as usize) {
             if item.is_none() {
-              *item = Some(0_i64);
+              *item = Some(i64_val);
             }
           }
         }

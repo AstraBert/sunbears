@@ -114,9 +114,8 @@ The DataFrame class supports also methods for filtering out or changing null val
 const df = readCsv('test.csv')
 df.dropNull() // drop null
 df.fillNull() // fill null values with the zero value of their type
+df.fillNull('a string', 0.5, 4, true) // fill null values with custom values
 ```
-
-> NOTE: `fillNull` works with zero values, which means: `""` for string, `0` for integer and float, `false` for boolean
 
 You can filter out and change NaN values as well (only applies if there are float-typed columns):
 

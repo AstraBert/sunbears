@@ -227,7 +227,7 @@ test('Reading null values works correctly', (t) => {
   t.deepEqual(col4, [true, false, true, false, null])
 })
 
-test('Filling null values works correctly', (t) => {
+test('Filling null values with zero values works correctly', (t) => {
   const df = readCsv('testfiles/with-nulls.csv')
   df.fillNull()
   t.is(df.len, 5)
@@ -243,6 +243,24 @@ test('Filling null values works correctly', (t) => {
   const col4 = asBooleanArray(df.get('col4')!)!
   t.is(col4.filter((x) => x === null).length, 0)
   t.deepEqual(col4, [true, false, true, false, false])
+})
+
+test('Filling null values with custom values works correctly', (t) => {
+  const df = readCsv('testfiles/with-nulls.csv')
+  df.fillNull('test', 99.3, 77, true)
+  t.is(df.len, 5)
+  const col1 = asStringArray(df.get('col1')!)!
+  t.is(col1.filter((x) => x === null).length, 0)
+  t.deepEqual(col1, ['hello', 'test', 'bye', 'test', 'ciao'])
+  const col2 = asIntArray(df.get('col2')!)!
+  t.is(col2.filter((x) => x === null).length, 0)
+  t.deepEqual(col2, [1, 2, 77, 3, 4])
+  const col3 = asFloatArray(df.get('col3')!)!
+  t.is(col3.filter((x) => x === null).length, 0)
+  t.deepEqual(col3, [0.1, 0.2, 0.3, 99.3, 0.4])
+  const col4 = asBooleanArray(df.get('col4')!)!
+  t.is(col4.filter((x) => x === null).length, 0)
+  t.deepEqual(col4, [true, false, true, false, true])
 })
 
 test('Dropping NaN values works correctly', (t) => {
